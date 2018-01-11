@@ -2,6 +2,8 @@ FROM python:2.7.13
 
 RUN mkdir -p /opt/app
 WORKDIR /opt/app/
+RUN mkdir charts
+RUN mkdir dashboards
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt

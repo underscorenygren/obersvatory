@@ -228,8 +228,10 @@ class FileStoreHandler(BaseHandler):
 		data = args.get('data')
 		logger.debug("updating {} with {}".format(name, data))
 		if not data:
+			err = "data field not set"
+			logger.info("error on update: {}".format(err))
 			self.set_status(400)
-			data = {"error": "data field not set"}
+			data = {"error": err}
 		else:
 			self.store.update(name, data)
 		self.write_json(data)

@@ -156,7 +156,7 @@ function serialize_control($control) {
 }
 
 function get_event_data(schema, table, days, callback) {
-  var url = "/events/" + schema + "/" + table + "/";
+  var url = _url(schema + "/" + table, 'events');
 
   console.log("loading events from", url);
   $.getJSON(url, {"days": days}, callback);
@@ -252,7 +252,7 @@ function make_new_chart(datatable, schema, table, type, input_data, $insert_at) 
     if (!name) {
       console.log("no name set for save");
     } else {
-      $.post('/charts/' + name + "/", data,
+      $.post(_url(name, 'charts'), data,
           function() { console.log("wrote control"); }, 'json');
     }
   });
