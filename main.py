@@ -38,13 +38,15 @@ class Index(tornado.web.RequestHandler):
 
 	def get(self, name="index.html"):
 
-		logger.debug("rendering {}".format(name))
+		logger.info("rendering {}".format(name))
 		suffix = name.split(".")[-1]
 		content_type = "text/plain"
 		if suffix == 'js':
 			content_type = "application/javascript"
 		elif suffix == 'html':
 			content_type = "text/html"
+		elif suffix == 'ico':
+			content_type = 'image/x-icon'
 
 		self.set_header("Content-Type", content_type)
 
@@ -136,6 +138,7 @@ class WithRedshiftConnection(BaseHandler):
 class Tables(WithRedshiftConnection):
 
 	def get(self):
+		logger.info("getting tables")
 		rows = []
 		for schema, tables in self.pg.get_schema_dict().items():
 			for table in tables:
@@ -150,7 +153,7 @@ class Events(WithRedshiftConnection):
 		args = self.get_args()
 		event_limit = args.get('limit', 10)
 		days = args.get('days')
-		logger.debug("getting table")
+		logger.info("getting table {} {} limit({}) days({})".format(schema, table_name, event_limit, days))
 		table = self.pg.get_table(table_name, table_schema=schema)
 		logger.debug("table found")
 		events = []
@@ -173,6 +176,7 @@ class FileStore(object):
 
 	def __init__(self, subfolder):
 		root_store = env("STORE_ROOT", '.')
+		self.name = subfolder
 		self.folder = path(os.path.join(root_store, subfolder))
 
 	def list(self):
@@ -206,6 +210,7 @@ class FileStoreHandler(BaseHandler):
 	self.store"""
 
 	def get(self, name=None):
+		logger.info("getting {} from {}".format(name, self.store.name) if name else "listing {}".format(self.store.name))
 		out = []
 		if not name:
 			out = json.dumps([{"name": _name} for _name in self.store.list()], indent=2)
@@ -218,6 +223,7 @@ class FileStoreHandler(BaseHandler):
 		self.write(out)
 
 	def _do_update(self, name):
+		logger.info("updating {} in {}".format(name, self.store.name))
 		args = self.get_args()
 		data = args.get('data')
 		logger.debug("updating {} with {}".format(name, data))
@@ -235,6 +241,7 @@ class FileStoreHandler(BaseHandler):
 		self._do_update(name)
 
 	def delete(self, name):
+		logger.info("deleting {} in {}".format(name, self.store.name))
 		self.store.remove(name)
 		self.write_json({})
 
@@ -264,12 +271,12 @@ if __name__ == '__main__':
 		'debug': debug_enabled(),
 		'template_path': path("static"),
 	})
-	port = 6080
+	port = int(env("PORT", 8080))
 
 	application.listen(port, **{
 		'xheaders': True
 	})
 
 	tornado.options.parse_command_line()
-	logger.debug("starting on {}".format(port))
+	logger.info("starting on {}".format(port))
 	tornado.ioloop.IOLoop.instance().start()

@@ -11,7 +11,7 @@ def env(key, default=None):
 
 logger = logging.getLogger("postgres")
 logger.addHandler(logging.StreamHandler())
-logger.setLevel(logging.DEBUG if env("DEBUG") else logging.info)
+logger.setLevel(logging.DEBUG if env("DEBUG") else logging.INFO)
 
 
 def connect_args():
@@ -20,7 +20,7 @@ def connect_args():
 			"password": env("PG_PWD"),
 			"user": env("PG_USER", "root"),
 			"host": env("PG_HOST"),
-			"port": env("PG_PORT", 5439)
+			"port": int(env("PG_PORT", 5439))
 		}
 
 def connect():
