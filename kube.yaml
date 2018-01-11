@@ -1,0 +1,65 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: observatory-web
+  namespace: default
+  labels:
+    component: observatory
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  minReadySeconds: 1
+  selector:
+    matchLabels:
+      component: observatory-web
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        component: observatory-web
+    spec:
+      containers:
+      - name: observatory-web
+        image: underscorenygren/observatory-web:latest
+        resources:
+          requests:
+            cpu: 100m
+            memory: 10M
+          limits:
+            cpu: 1000m
+            memory: 100M
+        env:
+        - name: PG_HOST
+          valueFrom:
+            secretKeyRef:
+              name: "redshift-metrics"
+              key: host
+        - name: PG_DB
+          valueFrom:
+            secretKeyRef:
+              name: "redshift-metrics"
+              key: db
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: "redshift-metrics"
+              key: user
+        - name: PG_PORT
+          valueFrom:
+            secretKeyRef:
+              name: "redshift-metrics"
+              key: port
+        - name: PG_PWD
+          valueFrom:
+            secretKeyRef:
+              name: "redshift-metrics"
+              key: password
+        - name: STORE_ROOT
+          value: "/storage"
+        volumeMounts:
+          - mountPath: "/storage"
+            name: storage
+      volumes:
+      - name: storage
+        emptyDir: {}
