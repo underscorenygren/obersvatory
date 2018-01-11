@@ -71,7 +71,7 @@ loadCharts(function() {
       });
     };
 
-  $.getJSON("/charts/", function(charts) {
+  $.getJSON("./charts/", function(charts) {
     append_elements(charts, "#chartlist", function(e) {
       var $clicked = $(this),
           chart_name = get_name($clicked);
@@ -133,7 +133,7 @@ loadCharts(function() {
     return $dashedit
   }
 
-  $.getJSON("/dashboards/", function(dashboards) {
+  $.getJSON("./dashboards/", function(dashboards) {
     append_elements(dashboards, '#dashlist', function(e) {
       var $clicked = $(this),
           dashboard_name = get_name($clicked),
