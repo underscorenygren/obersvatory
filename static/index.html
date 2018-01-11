@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>BizViz</title>
+
+	<script src='https://www.gstatic.com/charts/loader.js'></script>
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <script src="./index.js"></script>
+<style type="text/css">
+  .controls {
+    margin: 10px;
+  }
+</style>
+</head>
+
+<body>
+  <div id="container">
+    <div id="message"></div>
+    <label>Days Back</label><input id="days" type="text"/>
+    <label>Load Chart</label><input id="load" type="text"/>
+    <div id="table_dash">
+      <span id="schema_filter"></span>
+      <span id="table_filter"></span>
+      <div id="table_data"></div>
+    </div>
+    <div id="make_table">
+    </div>
+    <div id="event_viz" class="table-maker">
+    </div>
+    <div id="events_dash">
+      <span class="message" style="display:none">Loading Events</span>
+      <div id="events_table"></div>
+    </div>
+    <div id='charts'></div>
+  </div>
+
+	<script>
+
+// Load the Visualization API and the piechart package.
+google.charts.load('current', {'packages':['corechart', 'table', 'controls']});
+google.charts.setOnLoadCallback(function() {
+  console.log("loaded gcharts");
+  var group = google.visualization.data.group,
+      DataTable = google.visualization.DataTable,
+      ControlWrapper = google.visualization.ControlWrapper,
+      ChartWrapper = google.visualization.ChartWrapper,
+      addListener = google.visualization.events.addListener,
+      DAYS_DEFAULT = 7,
+      $events_dash = $("#events_dash"),
+      $days = $("#days").val(DAYS_DEFAULT),
+      $clicked_chart,
+      table_dash = new google.visualization.Dashboard($("#table_dash")[0]),
+      events_dash = new google.visualization.Dashboard($events_dash[0]),
+      schema_filter = new ControlWrapper({
+        'containerId': 'schema_filter',
+        'controlType': 'StringFilter',
+        'options': {
+          'filterColumnLabel': 'Schema',
+          'matchType': 'any',
+        }
+      }),
+      table_filter = new ControlWrapper({
+        'containerId': 'table_filter',
+        'controlType': 'StringFilter',
+        'options': {
+          'filterColumnLabel': 'Table',
+          'matchType': 'any',
+        }
+      }),
+      table_viz = new ChartWrapper({
+        'chartType': 'Table',
+        'containerId': 'table_data',
+        'options': {
+          'width': 300,
+          'height': 500,
+        }
+      }),
+      events_table = new ChartWrapper({
+        "chartType": "Table",
+        "containerId": 'events_table',
+        "options": {
+          "width": 600,
+          "height": 600
+        }
+      }),
+      get_days = function() { return $days.val() || DAYS_DEFAULT; },
+      datatable, events_dt;
+  table_dash.bind(schema_filter, table_viz);
+  table_dash.bind(table_filter, table_viz);
+  addListener(table_viz, "select", function() {
+    var chart = table_viz.getChart(),
+        selection = chart.getSelection(),
+        inner_insert = "#event_viz",
+        cell, selected_row;
+    $(inner_insert).empty();
+    $(".toggled-table").remove();
+    $(".table-maker").remove();
+    if ($clicked_chart) {
+      $clicked_chart.remove();
+    }
+    if (!selection.length) {
+      console.log("deselected");
+    } else {
+      var row_index = selection[0].row,
+        view = table_viz.getDataTable(),
+        $loading = $events_dash.find(".message"),
+        url;
+
+      //Globals set to be available to create chart
+      selected_schema = view.getValue(row_index, 0),
+      selected_table = view.getValue(row_index, 1),
+      url = "/events/" + selected_schema + "/" + selected_table + "/";
+
+      $loading.show();
+      get_event_data(selected_schema, selected_table,
+          get_days(), function(data) {
+        console.log("finished loading", url, data);
+        $loading.hide();
+        events_dt = new DataTable(data);
+        $clicked_chart = insert_toggled_table(events_dt, chart_name="events");
+
+        var x_axis_name = "received_at",
+            aggregate_column_name = "uuid",
+            x_axis_index = column_name_to_index(x_axis_name, events_dt),
+            aggregate_column_index = column_name_to_index(aggregate_column_name, events_dt);
+
+        if (x_axis_index === -1 || aggregate_column_index === -1) {
+          console.log("columns missing", "x", x_axis_index, x_axis_name, "aggr", aggregate_column_index, aggregate_column_name);
+        } else {
+          bind_chart_create(events_dt);
+          console.log("grouping on", x_axis_index, x_axis_name, "and", "aggr", aggregate_column_index, aggregate_column_name);
+          var grouped = group(events_dt, [{
+              "column": x_axis_index,
+              "modifier": toDate,
+              "type": "date"}],
+              [{"column": aggregate_column_index,
+                "label": "count",
+                "aggregation": google.visualization.data.count,
+                "type": "number"}
+          ]);
+          console.log("grouped data", grouped);
+          insert_toggled_table(grouped, {insertion_point:inner_insert});
+          append_chart(grouped, google.visualization.LineChart, {insertion_point:inner_insert});
+        }
+
+      });
+
+      console.log("selected", selected_schema, selected_table);
+    }
+  });
+
+  $.getJSON("/tables/", function(data) {
+    datatable = new google.visualization.DataTable(data);
+    datatable.sort([0]);
+    table_dash.draw(datatable);
+  });
+
+  var $load = $('#load');
+  onEnterKey($load, function(e) {
+    var name = $load.val();
+    console.log("loading dashboard for ", name);
+    $.getJSON("/dashboards/" + name + "/", function(data) {
+      make_new_chart_from_data(data, get_days());
+    });
+  });
+});
+	</script>
+
+</body>
+
+</html>
+
