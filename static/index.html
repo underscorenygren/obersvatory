@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>BizViz</title>
+	<title>Observatory - View Your Redshift Data</title>
 
 	<script src='https://www.gstatic.com/charts/loader.js'></script>
   <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
@@ -19,6 +19,7 @@
     <div id="message"></div>
     <label>Days Back</label><input id="days" type="text"/>
     <label>Load Chart</label><input id="load" type="text"/>
+    <a href="./dashboards.html">Dashboards</a>
     <div id="table_dash">
       <span id="schema_filter"></span>
       <span id="table_filter"></span>
@@ -38,17 +39,14 @@
 	<script>
 
 // Load the Visualization API and the piechart package.
-google.charts.load('current', {'packages':['corechart', 'table', 'controls']});
-google.charts.setOnLoadCallback(function() {
-  console.log("loaded gcharts");
+loadCharts(function() {
   var group = google.visualization.data.group,
       DataTable = google.visualization.DataTable,
       ControlWrapper = google.visualization.ControlWrapper,
       ChartWrapper = google.visualization.ChartWrapper,
       addListener = google.visualization.events.addListener,
-      DAYS_DEFAULT = 7,
+      get_days = init_days(),
       $events_dash = $("#events_dash"),
-      $days = $("#days").val(DAYS_DEFAULT),
       $clicked_chart,
       table_dash = new google.visualization.Dashboard($("#table_dash")[0]),
       events_dash = new google.visualization.Dashboard($events_dash[0]),
@@ -84,7 +82,6 @@ google.charts.setOnLoadCallback(function() {
           "height": 600
         }
       }),
-      get_days = function() { return $days.val() || DAYS_DEFAULT; },
       datatable, events_dt;
   table_dash.bind(schema_filter, table_viz);
   table_dash.bind(table_filter, table_viz);
@@ -110,7 +107,7 @@ google.charts.setOnLoadCallback(function() {
       //Globals set to be available to create chart
       selected_schema = view.getValue(row_index, 0),
       selected_table = view.getValue(row_index, 1),
-      url = "/events/" + selected_schema + "/" + selected_table + "/";
+      url = _url(selected_schema + "/" + selected_table, "events");
 
       $loading.show();
       get_event_data(selected_schema, selected_table,
@@ -150,7 +147,7 @@ google.charts.setOnLoadCallback(function() {
     }
   });
 
-  $.getJSON("/tables/", function(data) {
+  $.getJSON("./tables/", function(data) {
     datatable = new google.visualization.DataTable(data);
     datatable.sort([0]);
     table_dash.draw(datatable);
@@ -159,8 +156,8 @@ google.charts.setOnLoadCallback(function() {
   var $load = $('#load');
   onEnterKey($load, function(e) {
     var name = $load.val();
-    console.log("loading dashboard for ", name);
-    $.getJSON("/dashboards/" + name + "/", function(data) {
+    console.log("loading chart for ", name);
+    $.getJSON(_url(name, "charts"), function(data) {
       make_new_chart_from_data(data, get_days());
     });
   });

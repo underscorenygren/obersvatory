@@ -168,8 +168,12 @@ class Events(WithRedshiftConnection):
 			self.write_json({})
 
 
-class DashboardStore(object):
+class FileStore(object):
 	folder = path("./dashboards/")
+
+	def __init__(self, subfolder):
+		root_store = env("STORE_ROOT", '.')
+		self.folder = path(os.path.join(root_store, subfolder))
 
 	def list(self):
 		return [path.split('/')[-1].split('.')[0] for path in os.listdir(self.folder) if path[-4:] == 'json']
@@ -189,24 +193,25 @@ class DashboardStore(object):
 	def remove(self, name):
 		f = self._open(name)
 		f.close()
-		os.remove(f.path)
+		os.remove(f.name)
 
 	def _open(self, name, mode='r'):
 		f = open(os.path.join(self.folder, "{}.json".format(name)), mode)
 		return f
 
 
-store = DashboardStore()
+class FileStoreHandler(BaseHandler):
+	"""Parent class for filestorage handling.
+	Must be instantiated with an init that sets
+	self.store"""
 
-
-class Dashboards(BaseHandler):
 	def get(self, name=None):
 		out = []
 		if not name:
-			out = store.list()
+			out = json.dumps([{"name": _name} for _name in self.store.list()], indent=2)
 		else:
 			try:
-				out = store.get(name)
+				out = self.store.get(name)
 			except IOError:
 				self.set_status(404)
 		self.set_json_header()
@@ -220,7 +225,7 @@ class Dashboards(BaseHandler):
 			self.set_status(400)
 			data = {"error": "data field not set"}
 		else:
-			store.update(name, data)
+			self.store.update(name, data)
 		self.write_json(data)
 
 	def put(self, name):
@@ -230,7 +235,17 @@ class Dashboards(BaseHandler):
 		self._do_update(name)
 
 	def delete(self, name):
-		store.remove(name)
+		self.store.remove(name)
+		self.write_json({})
+
+
+class Dashboards(FileStoreHandler):
+	def initialize(self):
+		self.store = FileStore('dashboards')
+
+class Charts(FileStoreHandler):
+	def initialize(self):
+		self.store = FileStore('charts')
 
 
 if __name__ == '__main__':
@@ -240,6 +255,8 @@ if __name__ == '__main__':
 		(r'/tables/', Tables),
 		(r'/dashboards/', Dashboards),
 		(r'/dashboards/(?P<name>[-_\w]+)/$', Dashboards),
+		(r'/charts/', Charts),
+		(r'/charts/(?P<name>[-_\w]+)/$', Charts),
 		(r'/events/(?P<schema>[_\w]+)/(?P<table_name>[_\w]+)/', Events),
 	]
 

@@ -136,6 +136,7 @@ function serialize_control($control) {
       table = $control.find('._table').text(),
       inputs = $control.find('input'),
       type = $control.attr('data-type'),
+      name = $control.find(".name").val(),
       serialized_inputs = {},
       i, il, input, $input;
 
@@ -146,6 +147,7 @@ function serialize_control($control) {
   }
 
   return {
+    name: name,
     schema: schema,
     table: table,
     type: type,
@@ -160,24 +162,28 @@ function get_event_data(schema, table, days, callback) {
   $.getJSON(url, {"days": days}, callback);
 }
 
-function make_new_chart_from_data(serialized, days) {
+function make_new_chart_from_data(serialized, days, $insert_at, callback) {
   var schema = serialized.schema,
       table = serialized.table,
       type = serialized.type,
       inputs = serialized.inputs;
 
   get_event_data(schema, table, days, function(data) {
-    make_new_chart(new google.visualization.DataTable(data), schema, table, type, inputs)();
+    var $elem = make_new_chart(new google.visualization.DataTable(data),
+        schema, table, type, inputs, $insert_at)();
+    if (callback) {
+      callback($elem);
+    }
   });
 }
 
 
-function make_new_chart(datatable, schema, table, type, input_data) {
-  var $insert_at = $("#make_table"),
-      $grouping, $trigger, html,
+function make_new_chart(datatable, schema, table, type, input_data, $insert_at) {
+  $insert_at = $insert_at || $("#make_table");
+  var $grouping, $trigger, html,
       click_fn;
 
-  console.log("making chart of type", type);
+  console.log("making chart of type", type, "at", $insert_at);
 
   switch(type) {
     case "pie":
@@ -188,7 +194,9 @@ function make_new_chart(datatable, schema, table, type, input_data) {
           <label class='_table'></label>
           <label class='group'>Group By</label>
           <input class='group_input' type='text'/>
-          <button class='submit' type='submit' value='Render'/>
+          <button class='submit' type='submit'>Render</button>
+          <label>Name: </label>
+          <input class='name' type="text" />
           <button class='save'>Save</button>
         </div>
         `;
@@ -209,7 +217,9 @@ function make_new_chart(datatable, schema, table, type, input_data) {
           <input class='aggregate' type='text'/>
           <label>Aggregation Fn:</label>
           <input class='aggregation_fn_name' type='text' value="sum"/>
-          <button class='submit' type='submit' value='Render'/>
+          <button class='submit' type='submit'>Render</button>
+          <label>Name: </label>
+          <input class='name' type="text" />
           <button class='save'>Save</button>
         </div>
         `;
@@ -237,9 +247,14 @@ function make_new_chart(datatable, schema, table, type, input_data) {
 
   $trigger.click(click_fn);
   $controls.find('button.save').click(function() {
-    var data = JSON.stringify({'data': serialize_control($controls)});
-    $.post('/dashboards/test/', data,
-        function() { console.log("wrote control"); }, 'json');
+    var data = JSON.stringify({'data': serialize_control($controls)}),
+        name = $controls.find(".name").val();
+    if (!name) {
+      console.log("no name set for save");
+    } else {
+      $.post('/charts/' + name + "/", data,
+          function() { console.log("wrote control"); }, 'json');
+    }
   });
 
   return click_fn;
@@ -316,7 +331,7 @@ function make_line_or_bar_chart_click_fn(datatable, $insert_at, is_line) {
       }
       $insert_at.append($table_div);
       insert_toggled_table(grouped, {insertion_point:$table_div});
-      append_chart(grouped, constructor, {insertion_point: $table_div});
+      return append_chart(grouped, constructor, {insertion_point: $table_div});
     }
   };
 }
@@ -337,7 +352,7 @@ function make_pie_chart_click_fn(datatable, $insert_at) {
         [{"column": aggr_index, "aggregation": google.visualization.data.count, "type": "number"}]);
       var $table_div = $("<div></div>");
       $insert_at.append($table_div);
-      append_chart(grouped_view, google.visualization.PieChart,
+      return append_chart(grouped_view, google.visualization.PieChart,
           {insertion_point: $table_div});
     }
   };
@@ -365,7 +380,33 @@ function bind_chart_create(datatable) {
 function onEnterKey($elem, callback) {
   $elem.on('keypress', function (e) {
     if(e.which === 13){
-      callback(e);
+      callback(e, $elem);
     }
   });
 }
+
+function jqMake(tagname) {
+  return $("<" + tagname + "></" + tagname + ">");
+}
+
+var init_days = (function() { //Sets the default value on first run, assign to callable fn
+    var $days = $("#days"),
+        DEFAULT_DAYS = 7;
+    $days.val(DEFAULT_DAYS);
+    return function() {
+      return $days.val() || DEFAULT_DAYS;
+    };
+  }),
+
+  loadCharts = function(callback) {
+    google.charts.load('current', {'packages':['corechart', 'table', 'controls']});
+    google.charts.setOnLoadCallback(function() {
+      console.log("loaded gcharts");
+      callback();
+    });
+  },
+
+  _url = function(name, type) {
+      return "./" + type + "/" + name + "/";
+    };
+

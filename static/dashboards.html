@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Observatory - View Your Redshift Data</title>
+
+	<script src='https://www.gstatic.com/charts/loader.js'></script>
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <script src="./index.js"></script>
+<style type="text/css">
+  .controls {
+    margin: 10px;
+  }
+  .dash-editor {
+    width: 300px;
+    height: 500px;
+  }
+</style>
+</head>
+
+<body>
+  <div id="container">
+    <a href="./index.html">Home</a>
+    <h3>Charts</h3>
+    <div id="chartlist">
+    </div>
+    <h3>Dashboards</h3>
+    <div id="dashlist">
+    </div>
+    <label>New Dashboard</label>
+    <input class='new-dash' type="text" />
+    <label>Days Back</label><input id="days" type="text"/>
+    <div id="dashedit">
+    </div>
+    <div id="make_table">
+    </div>
+  </div>
+
+<script>
+loadCharts(function() {
+  var refresh = function() { window.location.reload(); },
+    get_days = init_days(),
+    chart_url = function(name) { return _url(name, 'charts'); },
+    dash_url = function(name) { return _url(name, 'dashboards'); },
+    append_elements = function(data, insert_at, click_fn) {
+      var $insert = $(insert_at),
+          $list = jqMake("ul"),
+          key_val = {};
+      for (var i = 0, il = data.length; i < il; i++) {
+        var elem = data[i],
+            elem_name = elem.name;
+        key_val[elem_name] = elem;
+        console.log("loading", elem_name, elem);
+
+        $list.append(
+            jqMake("li")
+            .text(elem_name)
+            .click(click_fn));
+      };
+      $insert.append($list);
+      return key_val;
+    },
+    get_name = function($elem) {
+      return $elem.text();
+    }, get_data = function(name, type, callback) {
+      var url = _url(name, type);
+
+      $.getJSON(url, function(data) {
+        callback(data);
+      });
+    };
+
+  $.getJSON("/charts/", function(charts) {
+    append_elements(charts, "#chartlist", function(e) {
+      var $clicked = $(this),
+          chart_name = get_name($clicked);
+
+      get_data(chart_name, "charts", function(chart_data) {
+        make_new_chart_from_data(chart_data, get_days(), null, function($elem) {
+          $elem.prepend(
+              jqMake("button")
+              .text("Delete")
+              .click(function() {
+                console.log("deleting", chart_name);
+                $.ajax({
+                  url: chart_url(chart_name),
+                  contentType: "application/json",
+                  dataType: "json",
+                  type: "DELETE",
+                  success: function() {
+                    console.log("deleted", chart_name);
+                    refresh();
+                }});
+              })
+          );
+        });
+      });
+    });
+  });
+
+  var show_dashboard_controls = function(dashboard_name) {
+    var $dashedit = $("#dashedit"),
+      $textarea = jqMake("textarea").attr("class", "dash-editor");
+
+    $dashedit.empty();
+    $dashedit.append(jqMake("button").text("Save").click(
+          function() {
+            $.ajax({
+              url: dash_url(dashboard_name),
+              contentType: "application/json",
+              dataType: "json",
+              type: "POST",
+              data: JSON.stringify({"data": JSON.parse($textarea.val())}),
+              success: function() { console.log("saved dashboard", dashboard_name); }
+            });
+          }));
+    $dashedit.append(jqMake("button").text("Delete").click(
+          function() {
+            console.log("deleting", dashboard_name);
+            $.ajax({
+              url: dash_url(dashboard_name),
+              contentType: "application/json",
+              dataType: "json",
+              type: "DELETE",
+              success: function() {
+                console.log("deleted dashboard", dashboard_name);
+                refresh();
+              }
+            });
+          }));
+    $dashedit.prepend($textarea);
+    return $dashedit
+  }
+
+  $.getJSON("/dashboards/", function(dashboards) {
+    append_elements(dashboards, '#dashlist', function(e) {
+      var $clicked = $(this),
+          dashboard_name = get_name($clicked),
+          $insert_at = $("#make_table");
+
+      $insert_at.empty();
+
+      get_data(dashboard_name, "dashboards", function(dash_data) {
+        var $dashedit = show_dashboard_controls(dashboard_name),
+          i, il, chart_name;
+
+        $dashedit.find('textarea').val(JSON.stringify(dash_data, null, 2));
+
+        for (i = 0, il = dash_data.length; i < il; i ++) {
+          chart_name = dash_data[i];
+          get_data(chart_name, "charts", (function(name) { //Closure to bind correct div
+            var $inner = jqMake("div").attr('id', "chart-" + name);
+            $insert_at.append($inner);
+              return function(chart_data) {
+                make_new_chart_from_data(chart_data, get_days(), $inner);
+              };
+          })(chart_name));
+        }
+      });
+    });
+  });
+
+  onEnterKey($('.new-dash'), function(e, $elem) {
+    show_dashboard_controls($elem.val());
+  });
+});
+
+</script>
+</body>
+</html>
+
