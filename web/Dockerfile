@@ -9,7 +9,6 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY ./static ./static/
-RUN mkdir lib/
 COPY *.py ./
 
 ENV PG_HOST ""
