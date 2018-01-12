@@ -1,0 +1,22 @@
+version: "3"
+
+volumes:
+  markdown-share:
+
+services:
+  web:
+    build: ./web
+    environment:
+      - MARKDOWN_FOLDER=/markdown/
+    env_file: .env
+    ports:
+      - "6080:80"
+    volumes:
+      - markdown-share:/markdown/
+  gen:
+    build: ./gen
+    environment:
+      - MARKDOWN_FOLDER=/markdown/
+    env_file: .env
+    volumes:
+      - markdown-share:/markdown/

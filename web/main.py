@@ -62,12 +62,13 @@ class Markdown(tornado.web.RequestHandler):
 	from a different directory to support sharing files
 	via docker/k8s volumes from the generator"""
 
-	folder = env("OUTPUT_FOLDER", "static/")
+	folder = env("MARKDOWN_FOLDER", "static/")
 
 	def get(self, name):
 		path = os.path.join(self.folder, name)
+		logger.debug("rendering {} from {}".format(name, path))
 		self.set_header('Content-Type', 'text/markdown; charset=UTF-8')
-		if not path.exists(path):
+		if not os.path.exists(path):
 			self.set_status(404)
 		else:
 			with open(path, 'r') as f:
@@ -338,8 +339,8 @@ class Charts(FileStoreHandler):
 if __name__ == '__main__':
 	HANDLERS = [
 		(r'/?', Index),
-		(r'/(?P<name>[-_\w]+\.\w+)$', Index),
 		(r'/(?P<name>[-_\w]+\.md)$', Markdown),
+		(r'/(?P<name>[-_\w]+\.\w+)$', Index),
 		(r'/tables/', Tables),
 		(r'/dashboards/', Dashboards),
 		(r'/dashboards/(?P<name>[-_\w]+)/$', Dashboards),
@@ -360,4 +361,5 @@ if __name__ == '__main__':
 
 	tornado.options.parse_command_line()
 	logger.info("starting on {}".format(port))
+	logger.info("markdown folder is {}".format(env("MARKDOWN_FOLDER")))
 	tornado.ioloop.IOLoop.instance().start()

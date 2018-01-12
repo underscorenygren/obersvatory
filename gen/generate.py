@@ -15,7 +15,7 @@ def do_generate():
 	pg = Postgres()
 	schemas_filter = []
 
-	output_folder = os.environ.get("OUTPUT_FOLDER", "static/")
+	output_folder = os.environ.get("MARKDOWN_FOLDER", "static/")
 	template_name = os.environ.get("TEMPLATE_SRC", "template.md")
 
 	if not os.path.isdir(output_folder):
