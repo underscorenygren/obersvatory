@@ -6,7 +6,7 @@ metadata:
     component: observatory
 spec:
   selector:
-    component: observatory-web
+    component: observatory
   ports:
   - name: http
     port: 80

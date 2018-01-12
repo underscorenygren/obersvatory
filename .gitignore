@@ -104,3 +104,4 @@ config/
 
 **/events.md
 **/events_dev.md
+.kube.yaml
