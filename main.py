@@ -172,12 +172,20 @@ class Events(WithRedshiftConnection):
 
 
 class FileStore(object):
-	folder = path("./dashboards/")
 
 	def __init__(self, subfolder):
-		root_store = env("STORE_ROOT", '.')
+		env_path = env("STORE_ROOT")
+		root_store_path = None
+		if env_path:
+			root_store_path = os.path.join(env_path, subfolder)
+		else:
+			root_store_path = path(subfolder)
+
 		self.name = subfolder
-		self.folder = path(os.path.join(root_store, subfolder))
+		self.folder = root_store_path
+		if not os.path.exists(self.folder):
+			logger.info("creating non-existing folders for {}".format(self.folder))
+			os.makedirs(self.folder)
 
 	def list(self):
 		return [path.split('/')[-1].split('.')[0] for path in os.listdir(self.folder) if path[-4:] == 'json']
