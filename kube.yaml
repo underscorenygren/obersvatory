@@ -6,14 +6,12 @@ metadata:
   labels:
     component: observatory
 spec:
-  replicas: 1
+  replicas: 5
   revisionHistoryLimit: 2
   minReadySeconds: 1
   selector:
     matchLabels:
       component: observatory-web
-  strategy:
-    type: Recreate
   template:
     metadata:
       labels:
@@ -55,11 +53,22 @@ spec:
             secretKeyRef:
               name: "redshift-metrics"
               key: password
-        - name: STORE_ROOT
-          value: "/storage"
-        volumeMounts:
-          - mountPath: "/storage"
-            name: storage
+        - name: S3_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: "observatory-aws"
+              key: "bucket"
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: "observatory-aws"
+              key: "id"
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "observatory-aws"
+              key: "secret"
+
       volumes:
       - name: storage
         emptyDir: {}
