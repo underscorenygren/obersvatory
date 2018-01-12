@@ -57,6 +57,23 @@ class Index(tornado.web.RequestHandler):
 			self.set_status(404)
 
 
+class Markdown(tornado.web.RequestHandler):
+	"""In it's own class becaues we potentially server
+	from a different directory to support sharing files
+	via docker/k8s volumes from the generator"""
+
+	folder = env("OUTPUT_FOLDER", "static/")
+
+	def get(self, name):
+		path = os.path.join(self.folder, name)
+		self.set_header('Content-Type', 'text/markdown; charset=UTF-8')
+		if not path.exists(path):
+			self.set_status(404)
+		else:
+			with open(path, 'r') as f:
+				self.write(f.read())
+
+
 class BaseHandler(tornado.web.RequestHandler):
 
 	def initialize(self):
@@ -322,6 +339,7 @@ if __name__ == '__main__':
 	HANDLERS = [
 		(r'/?', Index),
 		(r'/(?P<name>[-_\w]+\.\w+)$', Index),
+		(r'/(?P<name>[-_\w]+\.md)$', Markdown),
 		(r'/tables/', Tables),
 		(r'/dashboards/', Dashboards),
 		(r'/dashboards/(?P<name>[-_\w]+)/$', Dashboards),

@@ -1,5 +1,6 @@
 # Metrics
-_Generated at {{generated_at}} EST_
+
+_Generated at {{generated_at}} EST in {{finished_in}}s_
 
 ## Schemas
 

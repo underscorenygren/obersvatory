@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Observatory - Event Dev Docs</title>
+
+  <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon" />
+  <script src="marked.js"></script>
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+</head>
+<body>
+  <div id="container">
+  </div>
+
+<script>
+  $(document).ready(function() {
+    var page = "events_dev.md";
+    console.log("loading", page);
+    $.get(page, function(data) {
+      console.log("loaded", page, "converting");
+      $("#container").html(marked(data));
+    });
+  });
+</script>
+</body>
+</html>
+
