@@ -28,7 +28,7 @@ spec:
             memory: 10M
           limits:
             cpu: 1000m
-            memory: 100M
+            memory: 1000M
         env:
         - name: PG_HOST
           valueFrom:
