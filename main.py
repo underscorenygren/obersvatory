@@ -4,6 +4,7 @@ import os
 import tornado.ioloop
 import tornado.web
 import tornado.options
+import boto3
 
 import gchart
 import postgres
@@ -212,6 +213,48 @@ class FileStore(object):
 		return f
 
 
+class S3Store(object):
+	root_prefix = env("S3_PREFIX", "development")
+	bucket = env("S3_BUCKET")
+
+	def __init__(self, subfolder):
+		self.cli = boto3.client('s3')
+
+		self.name = subfolder
+		self.prefix = "{}/{}".format(self.root_prefix, subfolder)
+
+	def list(self):
+		resp = self.cli.list_objects_v2(**{
+			"Bucket": self.bucket,
+			"Prefix": self.prefix
+			})
+		listed = [content['Key'] for content in resp.get('Contents', [])]
+		return [path.split('/')[-1].split('.')[0] for path in listed if path[-4:] == 'json']
+
+	def _make_key(self, name):
+		return "{}/{}.json".format(self.prefix, name)
+
+	def get(self, name):
+		obj = self.cli.get_object(
+				Bucket=self.bucket,
+				Key=self._make_key(name))
+		data = obj['Body'].read()
+		return data
+
+	def update(self, name, data):
+		self.cli.put_object(ACL='private',
+				Body=json.dumps(data, indent=2, default=lambda o: o.isoformat()),
+				Bucket=self.bucket,
+				Key=self._make_key(name),
+				ContentType="application/json")
+
+	def remove(self, name):
+		self.cli.delete_object(
+				Bucket=self.bucket,
+				Key=self._make_key(name)
+			)
+
+
 class FileStoreHandler(BaseHandler):
 	"""Parent class for filestorage handling.
 	Must be instantiated with an init that sets
@@ -256,13 +299,23 @@ class FileStoreHandler(BaseHandler):
 		self.write_json({})
 
 
+def load_file_store(store_name):
+	"""Loads file store depending on settings in env"""
+	if env("S3_BUCKET"):
+		logger.info("loading s3 store {}".format(store_name))
+		return S3Store(store_name)
+	logger.info("loading file store {}".format(store_name))
+	return FileStore(store_name)
+
+
 class Dashboards(FileStoreHandler):
 	def initialize(self):
-		self.store = FileStore('dashboards')
+		self.store = load_file_store('dashboards')
+
 
 class Charts(FileStoreHandler):
 	def initialize(self):
-		self.store = FileStore('charts')
+		self.store = load_file_store('charts')
 
 
 if __name__ == '__main__':
