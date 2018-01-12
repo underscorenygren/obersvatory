@@ -6,7 +6,7 @@ metadata:
   labels:
     component: observatory
 spec:
-  replicas: 1
+  replicas: 5
   revisionHistoryLimit: 2
   minReadySeconds: 1
   selector:
